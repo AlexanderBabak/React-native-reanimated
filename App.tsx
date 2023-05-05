@@ -1,42 +1,57 @@
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
-  useSharedValue,
+  useAnimatedGestureHandler,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
-  withRepeat,
 } from 'react-native-reanimated';
-import React, { useEffect } from 'react';
+import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 
-const SIZE = 100.0;
+const SIZE = 90.0;
+const CIRCLE_RADIUS = SIZE * 2;
 
-const handleRotation = (progress: Animated.SharedValue<number>) => {
-  'worklet';
-
-  return `${progress.value * 2 * Math.PI}rad`;
+type ContextType = {
+  translateX: number;
+  translateY: number;
 };
 
 export default function App() {
-  const progress = useSharedValue(1);
-  const scale = useSharedValue(2);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
 
-  const reanimatedStyle = useAnimatedStyle(() => {
+  const panGestureEvent = useAnimatedGestureHandler<PanGestureHandlerGestureEvent, ContextType>({
+    onStart: (event, context) => {
+      context.translateX = translateX.value;
+      context.translateY = translateY.value;
+    },
+    onActive: (event, context) => {
+      translateX.value = event.translationX + context.translateX;
+      translateY.value = event.translationY + context.translateY;
+    },
+    onEnd: (event) => {
+      const distance = Math.sqrt(translateX.value ** 2 + translateY.value ** 2);
+
+      if (distance < CIRCLE_RADIUS + SIZE / 2) {
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+      }
+    },
+  });
+
+  const rStyle = useAnimatedStyle(() => {
     return {
-      opacity: progress.value,
-      borderRadius: (progress.value * SIZE) / 2,
-      transform: [{ scale: scale.value }, { rotate: handleRotation(progress) }],
+      transform: [{ translateX: translateX.value }, { translateY: translateY.value }],
     };
-  }, []);
-
-  useEffect(() => {
-    progress.value = withRepeat(withSpring(0.5), -1, true);
-    scale.value = withRepeat(withSpring(1), -1, true);
-  }, []);
+  });
 
   return (
     <View style={styles.container}>
-      <Animated.View
-        style={[{ height: SIZE, width: SIZE, backgroundColor: 'blue' }, reanimatedStyle]}
-      />
+      <View style={styles.circle}>
+        <PanGestureHandler onGestureEvent={panGestureEvent}>
+          <Animated.View style={[styles.square, rStyle]}></Animated.View>
+        </PanGestureHandler>
+      </View>
     </View>
   );
 }
@@ -47,5 +62,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  square: {
+    width: SIZE,
+    height: SIZE,
+    backgroundColor: 'rgba(0,0,256, 0.5)',
+    borderRadius: 20,
+  },
+  circle: {
+    width: CIRCLE_RADIUS * 2,
+    height: CIRCLE_RADIUS * 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: CIRCLE_RADIUS,
+    borderWidth: 5,
+    borderColor: 'rgba(0,0,256, 0.5)',
   },
 });
