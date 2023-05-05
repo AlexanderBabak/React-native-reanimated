@@ -1,44 +1,29 @@
-import { StyleSheet, Text, View } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withRepeat,
-} from 'react-native-reanimated';
+import { StyleSheet, View } from 'react-native';
 import React, { useEffect } from 'react';
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import { Page } from './components/Page';
 
-const SIZE = 100.0;
-
-const handleRotation = (progress: Animated.SharedValue<number>) => {
-  'worklet';
-
-  return `${progress.value * 2 * Math.PI}rad`;
-};
+const WORDS = ["What's", 'up', 'mobile', 'devs?'];
 
 export default function App() {
-  const progress = useSharedValue(1);
-  const scale = useSharedValue(2);
+  const translateX = useSharedValue(0);
 
-  const reanimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: progress.value,
-      borderRadius: (progress.value * SIZE) / 2,
-      transform: [{ scale: scale.value }, { rotate: handleRotation(progress) }],
-    };
-  }, []);
-
-  useEffect(() => {
-    progress.value = withRepeat(withSpring(0.5), -1, true);
-    scale.value = withRepeat(withSpring(1), -1, true);
-  }, []);
+  const scrollHAndler = useAnimatedScrollHandler((event) => {
+    translateX.value = event.contentOffset.x;
+  });
 
   return (
-    <View style={styles.container}>
-      <Text>Hello</Text>
-      <Animated.View
-        style={[{ height: SIZE, width: SIZE, backgroundColor: 'blue' }, reanimatedStyle]}
-      />
-    </View>
+    <Animated.ScrollView
+      pagingEnabled
+      onScroll={scrollHAndler}
+      scrollEventThrottle={16}
+      horizontal
+      style={styles.container}
+    >
+      {WORDS.map((title, index) => {
+        return <Page key={index.toString()} title={title} index={index} translateX={translateX} />;
+      })}
+    </Animated.ScrollView>
   );
 }
 
@@ -46,7 +31,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
