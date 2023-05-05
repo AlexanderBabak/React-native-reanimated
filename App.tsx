@@ -1,43 +1,53 @@
-import { StyleSheet, View } from 'react-native';
+import React from 'react';
+import { StyleSheet, Image, Dimensions } from 'react-native';
 import Animated, {
-  useSharedValue,
+  useAnimatedGestureHandler,
   useAnimatedStyle,
-  withSpring,
-  withRepeat,
+  useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
-import React, { useEffect } from 'react';
+import { PinchGestureHandler, PinchGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 
-const SIZE = 100.0;
-
-const handleRotation = (progress: Animated.SharedValue<number>) => {
-  'worklet';
-
-  return `${progress.value * 2 * Math.PI}rad`;
-};
+const imageUri =
+  'https://images.unsplash.com/photo-1621569642780-4864752e847e?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=668&q=80';
+const AnimatedImage = Animated.createAnimatedComponent(Image);
+const { width, height } = Dimensions.get('window');
 
 export default function App() {
-  const progress = useSharedValue(1);
-  const scale = useSharedValue(2);
+  const scale = useSharedValue(1);
+  const focalX = useSharedValue(1);
+  const focalY = useSharedValue(1);
+  const pinchHandler = useAnimatedGestureHandler<PinchGestureHandlerGestureEvent>({
+    onActive: (event) => {
+      scale.value = event.scale;
+      focalX.value = event.focalX;
+      focalY.value = event.focalY;
+    },
+    onEnd: () => {
+      scale.value = withTiming(1);
+    },
+  });
 
-  const reanimatedStyle = useAnimatedStyle(() => {
+  const rStyle = useAnimatedStyle(() => {
     return {
-      opacity: progress.value,
-      borderRadius: (progress.value * SIZE) / 2,
-      transform: [{ scale: scale.value }, { rotate: handleRotation(progress) }],
+      transform: [
+        { translateX: focalX.value },
+        { translateY: focalY.value },
+        { translateX: -width / 2 },
+        { translateY: -height / 2 },
+        { scale: scale.value },
+        { translateX: -focalX.value },
+        { translateY: -focalY.value },
+        { translateX: width / 2 },
+        { translateY: height / 2 },
+      ],
     };
-  }, []);
-
-  useEffect(() => {
-    progress.value = withRepeat(withSpring(0.5), -1, true);
-    scale.value = withRepeat(withSpring(1), -1, true);
-  }, []);
+  });
 
   return (
-    <View style={styles.container}>
-      <Animated.View
-        style={[{ height: SIZE, width: SIZE, backgroundColor: 'blue' }, reanimatedStyle]}
-      />
-    </View>
+    <PinchGestureHandler onGestureEvent={pinchHandler}>
+      <AnimatedImage style={[{ flex: 1 }, rStyle]} source={{ uri: imageUri }} />
+    </PinchGestureHandler>
   );
 }
 
