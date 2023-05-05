@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -34,6 +34,7 @@ export default function App() {
 
   return (
     <View style={styles.container}>
+      <Text>Hello</Text>
       <Animated.View
         style={[{ height: SIZE, width: SIZE, backgroundColor: 'blue' }, reanimatedStyle]}
       />
