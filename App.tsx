@@ -1,45 +1,83 @@
-import { StyleSheet, View } from 'react-native';
+import React, { useCallback, useRef } from 'react';
+import { StyleSheet, View, Image, Dimensions, ImageBackground } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withRepeat,
+  withDelay,
+  withTiming,
 } from 'react-native-reanimated';
-import React, { useEffect } from 'react';
+import { TapGestureHandler } from 'react-native-gesture-handler';
 
-const SIZE = 100.0;
-
-const handleRotation = (progress: Animated.SharedValue<number>) => {
-  'worklet';
-
-  return `${progress.value * 2 * Math.PI}rad`;
-};
+const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 export default function App() {
-  const progress = useSharedValue(1);
-  const scale = useSharedValue(2);
+  const scale = useSharedValue(0);
+  const opacity = useSharedValue(1);
 
-  const reanimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: progress.value,
-      borderRadius: (progress.value * SIZE) / 2,
-      transform: [{ scale: scale.value }, { rotate: handleRotation(progress) }],
-    };
+  const rStyle = useAnimatedStyle(() => {
+    return { transform: [{ scale: Math.max(scale.value, 0) }] };
+  });
+
+  const rTextStyle = useAnimatedStyle(() => {
+    return { opacity: opacity.value };
+  });
+
+  const doubleTapRef = useRef();
+
+  const onDoubleTap = useCallback(() => {
+    scale.value = withSpring(1, undefined, (isFinished) => {
+      if (isFinished) {
+        scale.value = withDelay(500, withSpring(0));
+      }
+    });
   }, []);
 
-  useEffect(() => {
-    progress.value = withRepeat(withSpring(0.5), -1, true);
-    scale.value = withRepeat(withSpring(1), -1, true);
+  const onSingleTap = useCallback(() => {
+    opacity.value = withTiming(0, undefined, (isFinished) => {
+      if (isFinished) {
+        opacity.value = withDelay(500, withTiming(1));
+      }
+    });
   }, []);
 
   return (
     <View style={styles.container}>
-      <Animated.View
-        style={[{ height: SIZE, width: SIZE, backgroundColor: 'blue' }, reanimatedStyle]}
-      />
+      <TapGestureHandler
+        waitFor={doubleTapRef}
+        onActivated={() => {
+          onSingleTap();
+        }}
+      >
+        <TapGestureHandler
+          maxDelayMs={250}
+          ref={doubleTapRef}
+          numberOfTaps={2}
+          onActivated={() => {
+            onDoubleTap();
+          }}
+        >
+          <Animated.View>
+            <ImageBackground source={require('./assets/image.jpeg')} style={styles.image}>
+              <AnimatedImage
+                source={require('./assets/heart.png')}
+                style={[
+                  styles.image,
+                  { shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.35, shadowRadius: 35 },
+                  rStyle,
+                ]}
+                resizeMode={'center'}
+              />
+              <Animated.Text style={[styles.turtles, rTextStyle]}>🐢🐢🐢🐢🐢</Animated.Text>
+            </ImageBackground>
+          </Animated.View>
+        </TapGestureHandler>
+      </TapGestureHandler>
     </View>
   );
 }
+
+const { width: SIZE } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
@@ -47,5 +85,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  image: {
+    width: SIZE,
+    height: SIZE,
+  },
+  turtles: {
+    fontSize: 40,
+    textAlign: 'center',
+    marginTop: 30,
   },
 });
