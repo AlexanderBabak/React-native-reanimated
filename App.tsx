@@ -1,42 +1,56 @@
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withRepeat,
+  useAnimatedGestureHandler,
+  withDecay,
+  useDerivedValue,
+  cancelAnimation,
 } from 'react-native-reanimated';
-import React, { useEffect } from 'react';
+import { Page, PAGE_WIDTH } from './components/Page';
+import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 
-const SIZE = 100.0;
-
-const handleRotation = (progress: Animated.SharedValue<number>) => {
-  'worklet';
-
-  return `${progress.value * 2 * Math.PI}rad`;
+const titles = ["What's", 'up', 'mobile', 'devs?'];
+type ContextType = {
+  x: number;
 };
-
 export default function App() {
-  const progress = useSharedValue(1);
-  const scale = useSharedValue(2);
+  const translateX = useSharedValue(0);
 
-  const reanimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: progress.value,
-      borderRadius: (progress.value * SIZE) / 2,
-      transform: [{ scale: scale.value }, { rotate: handleRotation(progress) }],
-    };
-  }, []);
+  const clampedTranslateX = useDerivedValue(() => {
+    const MAX_TRANSLATE_X = -PAGE_WIDTH * (titles.length - 1);
+    return Math.max(Math.min(translateX.value, 0), MAX_TRANSLATE_X);
+  });
 
-  useEffect(() => {
-    progress.value = withRepeat(withSpring(0.5), -1, true);
-    scale.value = withRepeat(withSpring(1), -1, true);
-  }, []);
+  const panGestureEvent = useAnimatedGestureHandler<PanGestureHandlerGestureEvent, ContextType>({
+    onStart: (_, context) => {
+      context.x = clampedTranslateX.value;
+      cancelAnimation(translateX);
+    },
+    onActive: (event, context) => {
+      translateX.value = event.translationX + context.x;
+    },
+    onEnd: (event) => {
+      translateX.value = withDecay({ velocity: event.velocityX });
+    },
+  });
 
   return (
     <View style={styles.container}>
-      <Animated.View
-        style={[{ height: SIZE, width: SIZE, backgroundColor: 'blue' }, reanimatedStyle]}
-      />
+      <PanGestureHandler onGestureEvent={panGestureEvent}>
+        <Animated.View style={{ flex: 1, flexDirection: 'row' }}>
+          {titles.map((title, index) => {
+            return (
+              <Page
+                key={index.toString()}
+                title={title}
+                index={index}
+                translateX={clampedTranslateX}
+              />
+            );
+          })}
+        </Animated.View>
+      </PanGestureHandler>
     </View>
   );
 }
@@ -45,7 +59,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
